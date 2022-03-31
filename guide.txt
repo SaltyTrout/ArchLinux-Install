@@ -1,0 +1,74 @@
+# Update system clock
+timedatectl set-ntp true
+
+# Partition disk
+fdisk /dev/sda
+
+/dev/sda1 -> 550M EFI
+/dev/sda2 -> Linux Filesystem
+
+# Format and mount partition
+mkfs.fat -F32 /dev/sda1
+mkfs.ext4 /dev/sda2
+
+# setup mirrors
+pacman -Syy
+pacman -S reflector
+cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+reflector -c "US" -f 12 -l 10 -n 12 --save /etc/pacman.d/mirrorlist
+
+# Mount root
+mount /dev/sda2 /mnt
+
+# Install base and base development packages
+pacstrap /mnt base linux linux-firmware base-devel vim nano
+
+# Generate fstab file
+genfstab -U /mnt >> /mnt/etc/fstab
+
+# Change root into new system
+arch-chroot /mnt
+
+# Set time zone
+timedatectl set-timezone America/New_York
+ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
+hwclock --systohc --utc
+
+# Set locale
+## Uncomment en_AU.UTF-8 UTF-8 in /etc/locale.gen
+locale-gen
+echo LANG=en_GB.UTF-8 > /etc/locale.conf
+export LANG=en_GB.UTF-8
+
+# Create hostname
+echo <hostname> >> /etc/hostname
+
+edit /etc/hosts
+127.0.0.1	localhost
+::1		localhost
+127.0.1.1	<hostname>
+
+# Set root password
+passwd
+
+# create user
+useradd -m <user>
+passwd <user>
+usermod -aG wheel <user>  ## optionally add to audio,video,optical,storage
+
+pacman -S sudo
+EDITOR=nano visudo
+
+# Install and configure grub bootloader
+mkdir /boot/efi
+mount /dev/sda1 /boot/efi
+pacman -S grub efibootmgr dosfstools os-prober mtools intel-ucode
+grub-install --target=x86_64-efi –efi-directory=/boot/efi –bootloader-id=grub --recheck
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# Install additional packages
+pacman -S wpa_supplicant
+
+exit
+umount -l /mnt
+reboot
