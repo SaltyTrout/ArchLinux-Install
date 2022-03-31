@@ -1,7 +1,17 @@
+# Setup wireless using iwctl
+station wlan0 scan
+station wlan0 get-networks
+station wlan0 connect <ssid>
+station wlan0 show
+exit
+
+ping -c 3 google.com
+
 # Update system clock
 timedatectl set-ntp true
 
-# Partition disk
+# Partition disk : 
+# no swap partition will create swap file after install
 fdisk /dev/sda
 
 /dev/sda1 -> 550M EFI
@@ -20,6 +30,10 @@ reflector -c "US" -f 12 -l 10 -n 12 --save /etc/pacman.d/mirrorlist
 # Mount root
 mount /dev/sda2 /mnt
 
+# Mount boot
+mkdir /mnt/boot/efi
+mount /dev/sda1 /mnt/boot/efi
+
 # Install base and base development packages
 pacstrap /mnt base linux linux-firmware base-devel vim nano
 
@@ -32,7 +46,7 @@ arch-chroot /mnt
 # Set time zone
 timedatectl set-timezone America/New_York
 ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
-hwclock --systohc --utc
+hwclock --systohc
 
 # Set locale
 ## Uncomment en_AU.UTF-8 UTF-8 in /etc/locale.gen
@@ -41,7 +55,7 @@ echo LANG=en_GB.UTF-8 > /etc/locale.conf
 export LANG=en_GB.UTF-8
 
 # Create hostname
-echo <hostname> >> /etc/hostname
+echo <hostname> > /etc/hostname
 
 edit /etc/hosts
 127.0.0.1	localhost
@@ -60,8 +74,7 @@ pacman -S sudo
 EDITOR=nano visudo
 
 # Install and configure grub bootloader
-mkdir /boot/efi
-mount /dev/sda1 /boot/efi
+
 pacman -S grub efibootmgr dosfstools os-prober mtools intel-ucode
 grub-install --target=x86_64-efi –efi-directory=/boot/efi –bootloader-id=grub --recheck
 grub-mkconfig -o /boot/grub/grub.cfg
@@ -70,5 +83,5 @@ grub-mkconfig -o /boot/grub/grub.cfg
 pacman -S wpa_supplicant
 
 exit
-umount -l /mnt
+umount -R /mnt
 reboot
