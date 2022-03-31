@@ -49,10 +49,10 @@ ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
 hwclock --systohc
 
 # Set locale
-## Uncomment en_AU.UTF-8 UTF-8 in /etc/locale.gen
+## Uncomment en_US.UTF-8 UTF-8 in /etc/locale.gen
 locale-gen
-echo LANG=en_GB.UTF-8 > /etc/locale.conf
-export LANG=en_GB.UTF-8
+echo LANG=en_US.UTF-8 > /etc/locale.conf
+export LANG=en_US.UTF-8
 
 # Create hostname
 echo <hostname> > /etc/hostname
