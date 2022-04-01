@@ -9,6 +9,7 @@ ping -c 3 google.com
 
 # Update system clock
 timedatectl set-ntp true
+timedatectl set-timezone America/New_York
 
 # Partition disk : 
 # no swap partition will create swap file after install
@@ -31,8 +32,8 @@ reflector -c "US" -f 12 -l 10 -n 12 --save /etc/pacman.d/mirrorlist
 mount /dev/sda2 /mnt
 
 # Mount boot
-mkdir /mnt/boot/efi
-mount /dev/sda1 /mnt/boot/efi
+mkdir /mnt/efi
+mount /dev/sda1 /mnt/efi
 
 # Install base and base development packages
 pacstrap /mnt base linux linux-firmware base-devel vim nano
@@ -44,7 +45,6 @@ genfstab -U /mnt >> /mnt/etc/fstab
 arch-chroot /mnt
 
 # Set time zone
-timedatectl set-timezone America/New_York
 ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
 hwclock --systohc
 
@@ -66,22 +66,41 @@ edit /etc/hosts
 passwd
 
 # create user
-useradd -m <user>
+useradd -G wheel,audio,video -m <user>
 passwd <user>
-usermod -aG wheel <user>  ## optionally add to audio,video,optical,storage
 
 pacman -S sudo
 EDITOR=nano visudo
 
 # Install and configure grub bootloader
-
 pacman -S grub efibootmgr dosfstools os-prober mtools intel-ucode
-grub-install --target=x86_64-efi –efi-directory=/boot/efi –bootloader-id=grub --recheck
+grub-install --target=x86_64-efi –efi-directory=/efi/ –bootloader-id=Arch --recheck
 grub-mkconfig -o /boot/grub/grub.cfg
 
 # Install additional packages
-pacman -S wpa_supplicant
+pacman -S iwd wpa_supplicant dialog dhcpcd ifplugd
 
 exit
 umount -R /mnt
 reboot
+
+
+# Post Install
+
+systemctl enable iwd.service
+systemctl start iwd.service
+systemctl enable systemd-resolved.service
+systemctl start systemd-resolved.service
+nano /etc/iwd/main.conf
+ 
+[General]
+EnableNetworkConfiguration=true
+
+[Network]
+NameResolvingService=systemd
+
+run through iwctl again
+
+reboot 
+
+network should work now
