@@ -44,8 +44,8 @@ timedatectl set-timezone America/New_York
 echo -n 'Setup partitions'
 sgdisk -Z ${device} # zap all on disk
 sgdisk -a 2048 -o ${device} # new gpt disk 2048 alignment
-sgdisk -n 1::+550M --typecode=2:ef00 --change-name=2:'EFIBOOT' ${device} # partition 1 (UEFI Boot Partition)
-sgdisk -n 2::-0 --typecode=3:8300 --change-name=3:'ROOT' ${device} # partition 2 (Root), default start, remaining
+sgdisk -n 1::+550M --typecode=1:ef00 --change-name=1:'EFIBOOT' ${device} # partition 1 (UEFI Boot Partition)
+sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:'ROOT' ${device} # partition 2 (Root), default start, remaining
 partprobe ${device}
 
 echo -n "Format and mount partitions"
