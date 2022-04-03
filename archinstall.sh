@@ -56,7 +56,7 @@ mkfs.vfat -F32 -n "EFIBOOT" ${partition1}
 mkfs.ext4 -L ROOT ${partition2}
 mount -t ext4 ${partition2} /mnt
 
-mkdir /mnt/boot/efi
+mkdir -p /mnt/boot/efi
 mount ${partition1} /mnt/boot/efi
 
 echo -n 'Setup mirrors'
