@@ -52,9 +52,9 @@ echo -n "Format and mount partitions"
 partition1=${device}1
 partition2=${device}2
 
-mkfs.vfat -F32 -n "EFIBOOT" ${partition1}
-mkfs.ext4 -L ROOT ${partition2}
-mount -t ext4 ${partition2} /mnt
+mkfs.vfat -F32 ${partition1}
+mkfs.ext4 ${partition2}
+mount ${partition2} /mnt
 
 mkdir -p /mnt/boot/efi
 mount ${partition1} /mnt/boot/efi
