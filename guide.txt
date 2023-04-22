@@ -11,16 +11,33 @@ ping -c 3 google.com
 timedatectl set-ntp true
 timedatectl set-timezone America/New_York
 
+
+# List current disks and partitions
+lsblk
+
 # Partition disk : 
 # no swap partition will create swap file after install
-fdisk /dev/sda
+# <disk> may be: sda or nvme0n1, check using lsblk
+fdisk /dev/<disk>  
 
-/dev/sda1 -> 550M EFI
-/dev/sda2 -> Linux Filesystem
+/dev/nvmen1p1 -> 550M EFI
+/dev/nvmen1p2 -> Linux Filesystem
 
 # Format and mount partition
-mkfs.fat -F32 /dev/sda1
-mkfs.ext4 /dev/sda2
+mkfs.fat -F32 /dev/nvmen1p1
+mkfs.btrfs /dev/nvmen1p2
+
+# Setup BTRFS SubVolumes
+mount /dev/nvmen1p2 /mnt
+cd /mnt
+btrfs subvolume create @
+btrfs subvolume create @home
+cd
+umount /mnt
+mount -o noatime,space_cache=v2,compress=zstd,ssd,discard=async,subvol=@ /dev/nvmen1p2 /mnt
+mkdir /mnt/{boot/efi,home}
+mount -o noatime,space_cache=v2,compress=zstd,ssd,discard=async,subvol=@home /dev/nvmen1p2 /mnt/home
+mount /dev/nvmen1p1 /mnt/boot/efi
 
 # setup mirrors
 pacman -Syy
@@ -28,15 +45,8 @@ pacman -S reflector
 cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
 reflector -c "US" -f 12 -l 10 -n 12 --save /etc/pacman.d/mirrorlist
 
-# Mount root
-mount /dev/sda2 /mnt
-
-# Mount boot
-mkdir /mnt/efi
-mount /dev/sda1 /mnt/efi
-
 # Install base and base development packages
-pacstrap /mnt base linux linux-firmware base-devel vim nano
+pacstrap /mnt base linux linux-firmware base-devel linux-headers vim git amd-ucode
 
 # Generate fstab file
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -60,7 +70,7 @@ echo <hostname> > /etc/hostname
 edit /etc/hosts
 127.0.0.1	localhost
 ::1		localhost
-127.0.1.1	<hostname>
+127.0.1.1	<hostname>.localdomain <hostname>
 
 # Set root password
 passwd
@@ -73,12 +83,12 @@ pacman -S sudo
 EDITOR=nano visudo
 
 # Install and configure grub bootloader
-pacman -S grub efibootmgr dosfstools os-prober mtools intel-ucode
+pacman -S grub efibootmgr dosfstools mtools dialog wpa_supplicant dhcpcd ifplugd bluez bluez-utils cups alsa-utils pipewire pipewire-alsa pipewire-pulse pipewire-jack rsync reflector 
+
 grub-install --target=x86_64-efi –efi-directory=/efi/ –bootloader-id=Arch --recheck
 grub-mkconfig -o /boot/grub/grub.cfg
 
-# Install additional packages
-pacman -S iwd wpa_supplicant dialog dhcpcd ifplugd
+vim /etc/mkinitcpio.conf # add btrfs to modules
 
 exit
 umount -R /mnt
@@ -87,20 +97,18 @@ reboot
 
 # Post Install
 
-systemctl enable iwd.service
-systemctl start iwd.service
-systemctl enable systemd-resolved.service
-systemctl start systemd-resolved.service
-nano /etc/iwd/main.conf
- 
-[General]
-EnableNetworkConfiguration=true
+# Setup WiFi
+ip a # take note of wifi interface name like wlan0
+vim /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+  ctrl_interface=/run/wpa_supplicant
+su # switch to root user to run wpa_passphrase
+wpa_passphrase <wifi name> <wifi password> >> /etc/wpa_supplicant/wpa_supplicant-wlan0.conf
+exit # exit root
+# can edit the config to remove password
+systemctl enable dhcpcd.service
+systemctl start dhcpcd.service
+systemctl enable wpa_supplicant@wlan0.service
+systemctl start wpa_supplicant@wlan0.service
 
-[Network]
-NameResolvingService=systemd
-
-run through iwctl again
-
-reboot 
-
-network should work now
+# should be able to ping archlinux now
+ping -c 3 www.archlinux.org 
